@@ -50,13 +50,16 @@ namespace Task2Logic
 
         public void Enqueue(T item)
         {
+            if (this.size == this.array.Length)
+            {
+                int capacity = (int)((long)this.array.Length * 200L / 100L);
+                if (capacity < this.array.Length + 4)
+                    capacity = this.array.Length + 4;
+                this.SetCapacity(capacity);
+            }
             this.array[this.tail] = item;
             this.tail = (this.tail + 1) % this.array.Length;
-
-            if (this.size == this.array.Length)
-                this.head = (this.head + 1) % this.array.Length;
-            else
-                this.size = this.size + 1;
+            this.size = this.size + 1;
         }
 
         public T Dequeue()
@@ -81,33 +84,121 @@ namespace Task2Logic
 
         #endregion
 
-        #region IEnumerable<T> Members
+        #region IEnumerable<T> members
 
-        public IEnumerator<T> GetEnumerator()
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
-            if (this.array.Length == 0)
-                yield break;
-
-            if (this.tail > this.head)
-                for (int i = this.head; i < this.tail; i++)
-                    yield return this.array[i];
-            else
-                for (int i = this.head; i < this.array.Length; i++)
-                    yield return this.array[i];
-                for (int i = 0; i <= this.tail - 1; i++)
-                    yield return this.array[i];
+            return (IEnumerator<T>)new Queue<T>.Enumerator(this);
         }
-
-        #endregion
-
-        #region IEnumerable Members
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return GetEnumerator();
+            return (IEnumerator)new Queue<T>.Enumerator(this);
         }
 
         #endregion
-        
+
+        #region Private methods
+
+        private T GetElement(int i)
+        {
+            return this.array[(this.head + i) % this.array.Length];
+        }
+
+        private void SetCapacity(int capacity)
+        {
+            T[] objArray = new T[capacity];
+            if (this.size > 0)
+            {
+                if (this.head < this.tail)
+                {
+                    Array.Copy((Array)this.array, this.head, (Array)objArray, 0, this.size);
+                }
+                else
+                {
+                    Array.Copy((Array)this.array, this.head, (Array)objArray, 0, this.array.Length - this.head);
+                    Array.Copy((Array)this.array, 0, (Array)objArray, this.array.Length - this.head, this.tail);
+                }
+            }
+            this.array = objArray;
+            this.head = 0;
+            this.tail = this.size == capacity ? 0 : this.size;
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Enumerator for queue 
+        /// </summary>
+        public struct Enumerator : IEnumerator<T>, IDisposable, IEnumerator
+        {
+            private Queue<T> q;
+            private int index;
+            private T currentElement;
+
+            internal Enumerator(Queue<T> q)
+            {
+                this.q = q;
+                this.index = -1;
+                this.currentElement = default(T);
+            }
+
+            public T Current
+            {
+                get
+                {
+                    if (this.index < 0)
+                    {
+                        if (this.index == -1)
+                            throw new InvalidOperationException("InvalidOperation_EnumNotStarted");
+                        else
+                            throw new InvalidOperationException("InvalidOperation_EnumNotEnded");
+                    }
+                    return this.currentElement;
+                }
+            }
+
+            object IEnumerator.Current
+            {
+                get
+                {
+                    if (this.index < 0)
+                    {
+                        if (this.index == -1)
+                            throw new InvalidOperationException("InvalidOperation_EnumNotStarted");
+                        else
+                            throw new InvalidOperationException("InvalidOperation_EnumNotEnded");
+                    }
+                    return (object)this.currentElement;
+                }
+            }
+
+            public bool MoveNext()
+            {
+                if (this.index == -2)
+                    return false;
+                this.index = this.index + 1;
+                if (this.index == this.q.size)
+                {
+                    this.index = -2;
+                    this.currentElement = default(T);
+                    return false;
+                }
+                this.currentElement = this.q.GetElement(this.index);
+                return true;
+            }
+            
+            void IEnumerator.Reset()
+            {
+                this.index = -1;
+                this.currentElement = default(T);
+            }
+
+            public void Dispose()
+            {
+                this.index = -2;
+                this.currentElement = default(T);
+            }
+        }
     }
 }
